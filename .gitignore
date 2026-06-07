@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Model files (optional - if you don't want to upload them)
+*.pt
+*.pkl
+
+# Environment
+venv/
+.env
+
+# Jupyter (if used later)
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
