@@ -1,5 +1,7 @@
 # Python cache
+.venv/
 __pycache__/
+.pytest_cache/
 *.pyc
 
 # Model files (optional - if you don't want to upload them)

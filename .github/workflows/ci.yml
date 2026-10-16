@@ -1,0 +1,71 @@
+name: ML API CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CPU-only PyTorch
+        run: pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Run automated tests
+        run: python -m pytest tests/ -v
+
+      - name: Build Docker image
+        run: docker build -t predictive-maintenance-api .
+
+      - name: Start Docker container
+        run: docker run -d --name predictive-api -p 8000:8000 predictive-maintenance-api
+
+      - name: Verify API prediction
+        run: |
+          python - <<'PY'
+          import time
+          import urllib.request
+          import json
+
+          url = "http://localhost:8000/predict"
+          payload = json.dumps({
+              "air_temp": 298.1,
+              "process_temp": 308.6,
+              "rpm": 1500,
+              "torque": 40,
+              "tool_wear": 100
+          }).encode()
+
+          for attempt in range(30):
+              try:
+                  request = urllib.request.Request(
+                      url,
+                      data=payload,
+                      headers={"Content-Type": "application/json"},
+                      method="POST"
+                  )
+                  with urllib.request.urlopen(request, timeout=5) as response:
+                      result = json.load(response)
+                      assert 0 <= result["failure_probability"] <= 1
+                      assert result["failure"] in (0, 1)
+                      print("Docker API smoke test passed:", result)
+                      break
+              except Exception:
+                  if attempt == 29:
+                      raise
+                  time.sleep(2)
+          PY
